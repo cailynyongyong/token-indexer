@@ -8,26 +8,32 @@ import {
   Input,
   SimpleGrid,
   Text,
-} from '@chakra-ui/react';
-import { Alchemy, Network, Utils } from 'alchemy-sdk';
-import { useState } from 'react';
+  Card,
+  CardHeader,
+  CardBody,
+  Container,
+} from "@chakra-ui/react";
+import { Alchemy, Network, Utils } from "alchemy-sdk";
+import { useState } from "react";
 
 function App() {
-  const [userAddress, setUserAddress] = useState('');
+  const [userAddress, setUserAddress] = useState("");
   const [results, setResults] = useState([]);
   const [hasQueried, setHasQueried] = useState(false);
   const [tokenDataObjects, setTokenDataObjects] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   async function getTokenBalance() {
+    setLoading(true);
     const config = {
-      apiKey: '<-- COPY-PASTE YOUR ALCHEMY API KEY HERE -->',
+      apiKey: "Zdzh4yYBpiLnFKG7NayO1tkZdWgwSOFY",
       network: Network.ETH_MAINNET,
     };
 
     const alchemy = new Alchemy(config);
     const data = await alchemy.core.getTokenBalances(userAddress);
-
-    setResults(data);
+    console.log(userAddress);
+    // console.log(data);
 
     const tokenDataPromises = [];
 
@@ -36,22 +42,44 @@ function App() {
         data.tokenBalances[i].contractAddress
       );
       tokenDataPromises.push(tokenData);
+      console.log(tokenData);
     }
-
+    console.log(await Promise.all(tokenDataPromises));
     setTokenDataObjects(await Promise.all(tokenDataPromises));
+    setResults(data);
+
     setHasQueried(true);
+    setLoading(false);
+  }
+  async function connect() {
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        console.log("connecting");
+        await ethereum
+          .request({ method: "eth_requestAccounts" })
+          .then((res) => {
+            // Return the address of the wallet
+            console.log(res[0]);
+            setUserAddress(res[0]);
+          });
+      } catch (error) {
+        console.log(error);
+      }
+      // const accounts = await ethereum.request({ method: "eth_accounts" });
+    } else {
+      alert("Please install Metamask!");
+      //document.getElementById("login_button").innerHTML = "Please install MetaMask";
+    }
   }
   return (
     <Box w="100vw">
       <Center>
         <Flex
-          alignItems={'center'}
+          alignItems={"center"}
           justifyContent="center"
-          flexDirection={'column'}
+          flexDirection={"column"}
         >
-          <Heading mb={0} fontSize={36}>
-            ERC-20 Token Indexer
-          </Heading>
+          <Heading>ERC-20 Token Indexer</Heading>
           <Text>
             Plug in an address and this website will return all of its ERC-20
             token balances!
@@ -62,12 +90,12 @@ function App() {
         w="100%"
         flexDirection="column"
         alignItems="center"
-        justifyContent={'center'}
+        justifyContent={"center"}
       >
-        <Heading mt={42}>
-          Get all the ERC-20 token balances of this address:
-        </Heading>
+        <Heading>Get all the ERC-20 token balances of this address:</Heading>
         <Input
+          size={"sm"}
+          defaultValue={userAddress}
           onChange={(e) => setUserAddress(e.target.value)}
           color="black"
           w="600px"
@@ -76,40 +104,50 @@ function App() {
           bgColor="white"
           fontSize={24}
         />
-        <Button fontSize={20} onClick={getTokenBalance} mt={36} bgColor="blue">
+        <Button colorScheme="blue" onClick={connect}>
+          Connect Metamask Wallet
+        </Button>
+        <Button
+          colorScheme="blue"
+          onClick={getTokenBalance}
+          isLoading={loading}
+          loadingText="Checking..."
+        >
           Check ERC-20 Token Balances
         </Button>
 
-        <Heading my={36}>ERC-20 token balances:</Heading>
+        <Heading>ERC-20 token balances:</Heading>
 
         {hasQueried ? (
-          <SimpleGrid w={'90vw'} columns={4} spacing={24}>
+          <SimpleGrid w={"90vw"} columns={4} spacing={24}>
             {results.tokenBalances.map((e, i) => {
               return (
-                <Flex
-                  flexDir={'column'}
-                  color="white"
-                  bg="blue"
-                  w={'20vw'}
-                  key={e.id}
-                >
-                  <Box>
-                    <b>Symbol:</b> ${tokenDataObjects[i].symbol}&nbsp;
-                  </Box>
-                  <Box>
-                    <b>Balance:</b>&nbsp;
-                    {Utils.formatUnits(
-                      e.tokenBalance,
-                      tokenDataObjects[i].decimals
-                    )}
-                  </Box>
-                  <Image src={tokenDataObjects[i].logo} />
+                <Flex flexDir={"column"} color="white" w={"20vw"} key={e.id}>
+                  <Card>
+                    <CardHeader>
+                      <Heading size="md">
+                        ${tokenDataObjects[i]?.symbol}&nbsp;
+                      </Heading>
+                    </CardHeader>
+                    <CardBody>
+                      <Image
+                        src={tokenDataObjects[i].logo}
+                        fallbackSrc="https://via.placeholder.com/70"
+                        borderRadius={"lg"}
+                      />
+                      <b>Balance:</b>&nbsp;
+                      {Utils.formatUnits(
+                        e.tokenBalance,
+                        tokenDataObjects[i].decimals
+                      )}
+                    </CardBody>
+                  </Card>
                 </Flex>
               );
             })}
           </SimpleGrid>
         ) : (
-          'Please make a query! This may take a few seconds...'
+          "Please make a query! This may take a few seconds..."
         )}
       </Flex>
     </Box>
